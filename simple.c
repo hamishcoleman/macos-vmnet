@@ -129,11 +129,14 @@ int tun_open() {
         exit(1);
     }
 
-    return -1;
+    return 0;
 }
 
 int main(int argc, char **argv) {
-    tun_open();
+    int error = tun_open();
+    if (error!=0) {
+        exit(1);
+    }
 
     printf("Waiting for packets\n");
     for(;;) {
