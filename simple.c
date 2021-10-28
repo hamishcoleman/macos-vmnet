@@ -7,7 +7,7 @@
 #include <sys/uio.h>
 #include <vmnet/vmnet.h>
 
-int tun_open() {
+int tap_open() {
 
     operating_modes_t mode = VMNET_HOST_MODE;
     xpc_object_t interface_desc = xpc_dictionary_create(NULL, NULL, 0);
@@ -133,7 +133,7 @@ int tun_open() {
 }
 
 int main(int argc, char **argv) {
-    int error = tun_open();
+    int error = tap_open();
     if (error!=0) {
         exit(1);
     }
