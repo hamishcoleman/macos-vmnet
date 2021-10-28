@@ -7,6 +7,8 @@
 #include <sys/uio.h>
 #include <vmnet/vmnet.h>
 
+#include <stdio.h>
+
 volatile static int read_avail = 0;
 
 interface_ref tap_open() {
@@ -150,6 +152,46 @@ int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
     return v.vm_pkt_size;
 }
 
+void fhexdump(unsigned int display_addr, void *in, int size, FILE *stream) {
+  uint8_t *p = in;
+
+  while(size>0) {
+    int i;
+
+    fprintf(stream, "%03x: ", display_addr);
+
+    for (i = 0; i < 16; i++) {
+      if (i < size) {
+        fprintf(stream, "%02x", p[i]);
+      } else {
+        fprintf(stream, "  ");
+      }
+      if (i==7) {
+        fprintf(stream, "  ");
+      } else {
+        fprintf(stream, " ");
+      }
+    }
+    fprintf(stream, "  |");
+
+    for (i = 0; i < 16; i++) {
+      if (i < size) {
+        char ch = p[i];
+        if (ch>=0x20 && ch<=0x7e) {
+          fprintf(stream, "%c", ch);
+        } else {
+          fprintf(stream, " ");
+        }
+      }
+    }
+    fprintf(stream, "|\n");
+
+    size -= 16;
+    display_addr += 16;
+    p += 16;
+  }
+}
+
 int main(int argc, char **argv) {
     interface_ref vmnet_iface_ref = tap_open();
     if (vmnet_iface_ref == NULL) {
@@ -161,6 +203,9 @@ int main(int argc, char **argv) {
     char buf[1600];
     for(;;) {
         int size = tap_read(vmnet_iface_ref, buf, sizeof(buf));
-        printf("RX size=%lu\n", size);
+        if (size) {
+            fhexdump(0, buf, size, stdout);
+            printf("\n");
+        }
     }
 }
