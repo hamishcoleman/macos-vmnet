@@ -7,7 +7,9 @@
 #include <sys/uio.h>
 #include <vmnet/vmnet.h>
 
-int tap_open() {
+static int read_avail = 0;
+
+interface_ref tap_open() {
 
     operating_modes_t mode = VMNET_HOST_MODE;
     xpc_object_t interface_desc = xpc_dictionary_create(NULL, NULL, 0);
@@ -78,7 +80,7 @@ int tap_open() {
         if (vmnet_start_status == VMNET_FAILURE) {
             printf("Hint: vmnet requires running with root access\n");
         }
-        return -1;
+        return NULL;
     }
 
     printf("Started vmnet interface with configuration:\n");
@@ -97,50 +99,59 @@ int tap_open() {
             return;
         }
 
-        char *packet_buf = malloc(vmnet_max_packet_size);
-        struct iovec *iov = malloc(sizeof(struct iovec));
-        iov->iov_base = packet_buf;
-        iov->iov_len = vmnet_max_packet_size;
-
-        int pktcnt = 1;
-        struct vmpktdesc *v = malloc(sizeof(struct vmpktdesc));
-        v->vm_pkt_size = vmnet_max_packet_size;
-        v->vm_pkt_iov = iov;
-        v->vm_pkt_iovcnt = 1;
-        v->vm_flags = 0;
-
-        vmnet_return_t result = vmnet_read(vmnet_iface_ref, v, &pktcnt);
-        if (result != VMNET_SUCCESS) {
-            printf("Failed to read packet from host: %i\n", result);
-        }
-
-        /* Ensure we read exactly one packet */
-        assert(pktcnt == 1);
-
-        printf("RX\n");
-        free(v);
-        free(iov);
-        free(packet_buf);
+        read_avail ++;
     });
 
     /* Did we manage to set an event callback? */
     if (event_cb_stat != VMNET_SUCCESS) {
         printf("Failed to set up a callback to receive packets: %i\n", vmnet_start_status);
-        exit(1);
+        return NULL;
     }
 
-    return 0;
+    return vmnet_iface_ref;
+}
+
+int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
+    // assert(len >= vmnet_max_packet_size);
+
+    struct iovec iov;
+    iov.iov_base = buf;
+    iov.iov_len = len;
+
+    int pktcnt = 1;
+    struct vmpktdesc v;
+    v.vm_pkt_size = len;
+    v.vm_pkt_iov = &iov;
+    v.vm_pkt_iovcnt = 1;
+    v.vm_flags = 0;
+
+    vmnet_return_t result = vmnet_read(vmnet_iface_ref, &v, &pktcnt);
+    if (result != VMNET_SUCCESS) {
+        printf("Failed to read packet from host: %i\n", result);
+        return -1;
+    }
+
+    if (pktcnt <= 0) {
+        return 0;
+    }
+
+    /* Ensure we read exactly one packet */
+    assert(pktcnt == 1);
+
+    printf("RX\n");
+    return pktcnt;
 }
 
 int main(int argc, char **argv) {
-    int error = tap_open();
-    if (error!=0) {
+    interface_ref vmnet_iface_ref = tap_open();
+    if (vmnet_iface_ref == NULL) {
         exit(1);
     }
 
     printf("Waiting for packets\n");
+
+    char buf[1600];
     for(;;) {
-        // Do nothing - it is all in the callback
-        sleep(1);
+        tap_read(vmnet_iface_ref, buf, sizeof(buf));
     }
 }
