@@ -8,6 +8,7 @@
 #include <vmnet/vmnet.h>
 
 #include <stdio.h>
+#include <time.h>
 
 void fhexdump(unsigned int display_addr, void *in, int size, FILE *stream) {
   uint8_t *p = in;
@@ -289,14 +290,28 @@ int main(int argc, char **argv) {
         ip4addr = argv[1];
     }
 
+    int timeout = 0;
+    if (argc>2) {
+        timeout = atoi(argv[2]);
+    }
+
     interface_ref vmnet_iface_ref = tap_open(ip4addr);
     if (vmnet_iface_ref == NULL) {
         exit(1);
     }
 
     printf("Waiting for packets\n");
+
+    int now = time(NULL);
+    int stopat = now + timeout;
+
     for(;;) {
         // Everything is done in the dispatch thread
         sleep(1);
+
+        now = time(NULL);
+        if (now > stopat) {
+            break;
+        }
     }
 }
