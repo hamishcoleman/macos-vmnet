@@ -120,6 +120,20 @@ interface_ref tap_open() {
         vmnet_interface_id_key,
         set_uuid
     );
+
+    char * ipaddr = "10.20.30.40"; // The interface will have this ip4 address
+    xpc_dictionary_set_string(interface_desc,
+        vmnet_start_address_key,
+        ipaddr
+    );
+    xpc_dictionary_set_string(interface_desc,
+        vmnet_end_address_key,
+        ipaddr
+    );
+    xpc_dictionary_set_string(interface_desc,
+        vmnet_subnet_mask_key,
+        "255.255.255.0"
+    );
 #if 0
     // Available from 11.0
     xpc_dictionary_set_uuid(interface_desc,
