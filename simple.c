@@ -164,6 +164,13 @@ interface_ref tap_open() {
 
     // Appears to simply generate a mac address unlikely to be used elsewhere.
     // No edge mac filtering was seen with this simple test tool.
+    // If false then the interface_param generated will not have either a
+    // vmnet_mac_address or a vmnet_interface_id key.
+    //
+    // The documentation implies that if you want the same mac address, you
+    // set the interface_desc vmnet_interface_id_key to the uuid you get from
+    // the interface_param.  However, this all refers to the "guest" MAC
+    // and we are trying to emulate a VPN...
     xpc_dictionary_set_bool(interface_desc,
         vmnet_allocate_mac_address_key,
         false
@@ -177,13 +184,6 @@ interface_ref tap_open() {
     __block vmnet_return_t vmnet_start_status = 0;
     __block uint64_t vmnet_iface_mtu = 0;
     __block uint64_t vmnet_max_packet_size = 0;
-    __block const char *vmnet_mac_address = NULL;
-    /*
-     * We can't refer to an array type directly within a block,
-     * so hold a pointer instead.
-     */
-    uuid_string_t vmnet_iface_uuid = {0};
-    __block uuid_string_t *vmnet_iface_uuid_ptr = &vmnet_iface_uuid;
 
     dispatch_semaphore_t vmnet_iface_sem = dispatch_semaphore_create(0);
 
@@ -206,23 +206,6 @@ interface_ref tap_open() {
             interface_param,
             vmnet_max_packet_size_key
         );
-        vmnet_mac_address = xpc_dictionary_get_string(
-            interface_param,
-            vmnet_mac_address_key
-        );
-        if (vmnet_mac_address) {
-            vmnet_mac_address=strdup(vmnet_mac_address);
-        } else {
-            vmnet_mac_address="NULL";
-        }
-
-        const uint8_t *iface_uuid = xpc_dictionary_get_uuid(
-            interface_param,
-            vmnet_interface_id_key
-        );
-        if (iface_uuid) {
-            uuid_unparse_upper(iface_uuid, *vmnet_iface_uuid_ptr);
-        }
 
         printf("got interface_param with:\n");
         xpc_dictionary_apply(interface_param,
@@ -255,8 +238,6 @@ interface_ref tap_open() {
     printf("Started vmnet interface with configuration:\n");
     printf("MTU:              %llu\n", vmnet_iface_mtu);
     printf("Max packet size:  %llu\n", vmnet_max_packet_size);
-    printf("MAC:              %s\n", vmnet_mac_address);
-    printf("UUID:             %s\n", vmnet_iface_uuid);
     printf("\n\n");
 
     vmnet_return_t event_cb_stat = vmnet_interface_set_event_callback(
@@ -296,7 +277,7 @@ interface_ref tap_open() {
 
     /* Did we manage to set an event callback? */
     if (event_cb_stat != VMNET_SUCCESS) {
-        printf("Failed to set up a callback to receive packets: %i\n", vmnet_start_status);
+        printf("Failed to set up a callback to receive packets: %i\n", event_cb_stat);
         return NULL;
     }
 
