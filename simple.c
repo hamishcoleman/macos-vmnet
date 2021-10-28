@@ -114,6 +114,8 @@ interface_ref tap_open() {
         mode
     );
 
+#define INSANE 1
+#if INSANE
     uuid_t set_uuid;
     uuid_parse("000000-0000-0000-0000-000000000001", set_uuid);
     xpc_dictionary_set_uuid(interface_desc,
@@ -163,6 +165,7 @@ interface_ref tap_open() {
         vmnet_allocate_mac_address_key,
         false
     );
+#endif /* INSANE */
 
     dispatch_queue_t vmnet_dispatch_queue = dispatch_queue_create(
         "org.qemu.vmnet.iface_queue",
