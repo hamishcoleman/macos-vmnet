@@ -104,7 +104,7 @@ void handle_rx_packet(interface_ref vmnet_iface_ref, char *buf, int len) {
     send_dummy(vmnet_iface_ref);
 }
 
-interface_ref tap_open() {
+interface_ref tap_open(const char *ip4addr) {
 
     operating_modes_t mode = VMNET_HOST_MODE;
     xpc_object_t interface_desc = xpc_dictionary_create(NULL, NULL, 0);
@@ -124,14 +124,13 @@ interface_ref tap_open() {
     );
 #endif /* INSANE */
 
-    char * ipaddr = "10.20.30.40"; // The interface will have this ip4 address
     xpc_dictionary_set_string(interface_desc,
         vmnet_start_address_key,
-        ipaddr
+        ip4addr
     );
     xpc_dictionary_set_string(interface_desc,
         vmnet_end_address_key,
-        ipaddr
+        ip4addr
     );
     xpc_dictionary_set_string(interface_desc,
         vmnet_subnet_mask_key,
@@ -285,7 +284,12 @@ interface_ref tap_open() {
 }
 
 int main(int argc, char **argv) {
-    interface_ref vmnet_iface_ref = tap_open();
+    char *ip4addr = "10.20.30.40";
+    if (argc>1) {
+        ip4addr = argv[1];
+    }
+
+    interface_ref vmnet_iface_ref = tap_open(ip4addr);
     if (vmnet_iface_ref == NULL) {
         exit(1);
     }
