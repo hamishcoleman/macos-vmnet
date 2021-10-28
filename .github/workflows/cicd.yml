@@ -19,8 +19,18 @@ jobs:
       - name: does it run
         run: |
           sudo ./simple 10.20.20.20 5 >output.txt &
+          sleep 1
           ifconfig >ifconfig.txt
-          sudo tcpdump -e -c 10 -i bridge100 >tcpdump.txt
+          sudo tcpdump -e -i bridge100 >tcpdump.txt || true
+
+      - name: Show the outputs
+        run: |
+          echo ifconfig.txt =================================================
+          cat ifconfig.txt
+          echo output.txt =================================================
+          cat output.txt
+          echo tcpdump.txt =================================================
+          cat tcpdump.txt
 
       - name: save binary
         uses: actions/upload-artifact@v2
