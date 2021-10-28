@@ -51,8 +51,6 @@ void fhexdump(unsigned int display_addr, void *in, int size, FILE *stream) {
 
 /************************************************************************/
 
-volatile static int read_avail = 0;
-
 int tap_write(interface_ref vmnet_iface_ref, char *buf, int len) {
     struct iovec iov;
     iov.iov_base = buf;
@@ -73,41 +71,25 @@ int tap_write(interface_ref vmnet_iface_ref, char *buf, int len) {
     return v.vm_pkt_size;
 }
 
-int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
-    if (read_avail == 0) {
-        /* No packets waiting */
-        return 0;
+void handle_rx_packet(interface_ref vmnet_iface_ref, char *buf, int len) {
+    if (len==0) {
+        return;
     }
 
-    // assert(len >= vmnet_max_packet_size);
+    fhexdump(0, buf, len, stdout);
+    printf("\n");
 
-    struct iovec iov;
-    iov.iov_base = buf;
-    iov.iov_len = len;
-
-    struct vmpktdesc v;
-    v.vm_pkt_size = len;
-    v.vm_pkt_iov = &iov;
-    v.vm_pkt_iovcnt = 1;
-    v.vm_flags = 0;
-
-    int pktcnt = 1;
-    vmnet_return_t result = vmnet_read(vmnet_iface_ref, &v, &pktcnt);
-    if (result != VMNET_SUCCESS) {
-        printf("Failed to read packet from host: %i\n", result);
-        return -1;
+    char dummy[] =
+        "\xff\xff\xff\xff\xff\xff"  // eth dest
+        "\x02\x10\x20\x30\x40\x50"  // eth src
+        "\x55\xaa"                  // eth proto
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+    int size = sizeof(dummy);
+    size = tap_write(vmnet_iface_ref, dummy, size);
+    if (size != sizeof(dummy)) {
+        printf("write error: size=%i\n", size);
     }
-
-    if (pktcnt <= 0) {
-        /* Record that there are no packets waiting */
-        read_avail = 0;
-        return 0;
-    }
-
-    /* Ensure we read exactly one packet */
-    assert(pktcnt == 1);
-
-    return v.vm_pkt_size;
 }
 
 interface_ref tap_open() {
@@ -200,9 +182,29 @@ interface_ref tap_open() {
             return;
         }
 
-        /* Record that we have packets waiting */
-        read_avail += 1;
-        /* TODO: wake up readers */
+        char buf[1600]; /* TODO: this should be vmnet_max_packet_size */
+        struct iovec iov;
+        iov.iov_base = buf;
+        iov.iov_len = sizeof(buf);
+
+        struct vmpktdesc v;
+        v.vm_pkt_size = sizeof(buf);
+        v.vm_pkt_iov = &iov;
+        v.vm_pkt_iovcnt = 1;
+        v.vm_flags = 0;
+
+        int pktcnt = 1;
+        vmnet_return_t result = vmnet_read(vmnet_iface_ref, &v, &pktcnt);
+        if (result != VMNET_SUCCESS) {
+            printf("Failed to read packet from host: %i\n", result);
+            return;
+        }
+
+        /* Ensure we read exactly one packet */
+        assert(pktcnt == 1);
+
+        /* Pass the received packet to the handler */
+        handle_rx_packet(vmnet_iface_ref, buf, v.vm_pkt_size);
     });
 
     /* Did we manage to set an event callback? */
@@ -221,25 +223,8 @@ int main(int argc, char **argv) {
     }
 
     printf("Waiting for packets\n");
-
-    char buf[1600];
     for(;;) {
-        int size = tap_read(vmnet_iface_ref, buf, sizeof(buf));
-        if (size) {
-            fhexdump(0, buf, size, stdout);
-            printf("\n");
-
-            char dummy[] =
-                "\xff\xff\xff\xff\xff\xff"  // eth dest
-                "\x02\x10\x20\x30\x40\x50"  // eth src
-                "\x55\xaa"                  // eth proto
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                "abcdefghijklmnopqrstuvwxyz";
-            size = sizeof(dummy);
-            size = tap_write(vmnet_iface_ref, dummy, size);
-            if (size != sizeof(dummy)) {
-                printf("write error: size=%i\n", size);
-            }
-        }
+        // Everything is done in the dispatch thread
+        sleep(1);
     }
 }
