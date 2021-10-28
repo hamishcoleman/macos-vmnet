@@ -17,10 +17,19 @@ jobs:
         run: make
 
       - name: does it run
-        run: sudo ./simple 10.20.20.20 5
+        run: |
+          sudo ./simple 10.20.20.20 5 >output.txt &
+          ifconfig >ifconfig.txt
+          tcpdump -e -c 10 -i bridge100 >tcpdump.txt
 
-      - name: save it
+      - name: save binary
         uses: actions/upload-artifact@v2
         with:
           name: binaries
           path: simple
+
+      - name: save output
+        uses: actions/upload-artifact@v2
+        with:
+          name: output
+          path: *.txt
