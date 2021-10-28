@@ -9,7 +9,106 @@
 
 #include <stdio.h>
 
+void fhexdump(unsigned int display_addr, void *in, int size, FILE *stream) {
+  uint8_t *p = in;
+
+  while(size>0) {
+    int i;
+
+    fprintf(stream, "%03x: ", display_addr);
+
+    for (i = 0; i < 16; i++) {
+      if (i < size) {
+        fprintf(stream, "%02x", p[i]);
+      } else {
+        fprintf(stream, "  ");
+      }
+      if (i==7) {
+        fprintf(stream, "  ");
+      } else {
+        fprintf(stream, " ");
+      }
+    }
+    fprintf(stream, "  |");
+
+    for (i = 0; i < 16; i++) {
+      if (i < size) {
+        char ch = p[i];
+        if (ch>=0x20 && ch<=0x7e) {
+          fprintf(stream, "%c", ch);
+        } else {
+          fprintf(stream, " ");
+        }
+      }
+    }
+    fprintf(stream, "|\n");
+
+    size -= 16;
+    display_addr += 16;
+    p += 16;
+  }
+}
+
+/************************************************************************/
+
 volatile static int read_avail = 0;
+
+int tap_write(interface_ref vmnet_iface_ref, char *buf, int len) {
+    struct iovec iov;
+    iov.iov_base = buf;
+    iov.iov_len = len;
+    struct vmpktdesc v;
+    v.vm_pkt_size = len;
+    v.vm_pkt_iov = &iov;
+    v.vm_pkt_iovcnt = 1;
+    v.vm_flags = 0;
+
+    int pktcnt = 1;
+    vmnet_return_t result = vmnet_write(vmnet_iface_ref, &v, &pktcnt);
+    if (result != VMNET_SUCCESS || pktcnt != 1) {
+        printf("Failed to read packet from host: %i\n", result);
+        return -1;
+    }
+
+    return v.vm_pkt_size;
+}
+
+int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
+    if (read_avail == 0) {
+        /* No packets waiting */
+        return 0;
+    }
+
+    // assert(len >= vmnet_max_packet_size);
+
+    struct iovec iov;
+    iov.iov_base = buf;
+    iov.iov_len = len;
+
+    struct vmpktdesc v;
+    v.vm_pkt_size = len;
+    v.vm_pkt_iov = &iov;
+    v.vm_pkt_iovcnt = 1;
+    v.vm_flags = 0;
+
+    int pktcnt = 1;
+    vmnet_return_t result = vmnet_read(vmnet_iface_ref, &v, &pktcnt);
+    if (result != VMNET_SUCCESS) {
+        printf("Failed to read packet from host: %i\n", result);
+        return -1;
+    }
+
+    if (pktcnt <= 0) {
+        /* Record that there are no packets waiting */
+        read_avail = 0;
+        return 0;
+    }
+
+    /* Ensure we read exactly one packet */
+    assert(pktcnt == 1);
+
+    return v.vm_pkt_size;
+}
 
 interface_ref tap_open() {
 
@@ -113,103 +212,6 @@ interface_ref tap_open() {
     }
 
     return vmnet_iface_ref;
-}
-
-int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
-    if (read_avail == 0) {
-        /* No packets waiting */
-        return 0;
-    }
-
-    // assert(len >= vmnet_max_packet_size);
-
-    struct iovec iov;
-    iov.iov_base = buf;
-    iov.iov_len = len;
-
-    struct vmpktdesc v;
-    v.vm_pkt_size = len;
-    v.vm_pkt_iov = &iov;
-    v.vm_pkt_iovcnt = 1;
-    v.vm_flags = 0;
-
-    int pktcnt = 1;
-    vmnet_return_t result = vmnet_read(vmnet_iface_ref, &v, &pktcnt);
-    if (result != VMNET_SUCCESS) {
-        printf("Failed to read packet from host: %i\n", result);
-        return -1;
-    }
-
-    if (pktcnt <= 0) {
-        /* Record that there are no packets waiting */
-        read_avail = 0;
-        return 0;
-    }
-
-    /* Ensure we read exactly one packet */
-    assert(pktcnt == 1);
-
-    return v.vm_pkt_size;
-}
-
-int tap_write(interface_ref vmnet_iface_ref, char *buf, int len) {
-    struct iovec iov;
-    iov.iov_base = buf;
-    iov.iov_len = len;
-    struct vmpktdesc v;
-    v.vm_pkt_size = len;
-    v.vm_pkt_iov = &iov;
-    v.vm_pkt_iovcnt = 1;
-    v.vm_flags = 0;
-
-    int pktcnt = 1;
-    vmnet_return_t result = vmnet_write(vmnet_iface_ref, &v, &pktcnt);
-    if (result != VMNET_SUCCESS || pktcnt != 1) {
-        printf("Failed to read packet from host: %i\n", result);
-        return -1;
-    }
-
-    return v.vm_pkt_size;
-}
-
-void fhexdump(unsigned int display_addr, void *in, int size, FILE *stream) {
-  uint8_t *p = in;
-
-  while(size>0) {
-    int i;
-
-    fprintf(stream, "%03x: ", display_addr);
-
-    for (i = 0; i < 16; i++) {
-      if (i < size) {
-        fprintf(stream, "%02x", p[i]);
-      } else {
-        fprintf(stream, "  ");
-      }
-      if (i==7) {
-        fprintf(stream, "  ");
-      } else {
-        fprintf(stream, " ");
-      }
-    }
-    fprintf(stream, "  |");
-
-    for (i = 0; i < 16; i++) {
-      if (i < size) {
-        char ch = p[i];
-        if (ch>=0x20 && ch<=0x7e) {
-          fprintf(stream, "%c", ch);
-        } else {
-          fprintf(stream, " ");
-        }
-      }
-    }
-    fprintf(stream, "|\n");
-
-    size -= 16;
-    display_addr += 16;
-    p += 16;
-  }
 }
 
 int main(int argc, char **argv) {
