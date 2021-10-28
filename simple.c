@@ -7,7 +7,7 @@
 #include <sys/uio.h>
 #include <vmnet/vmnet.h>
 
-static int read_avail = 0;
+volatile static int read_avail = 0;
 
 interface_ref tap_open() {
 
@@ -99,7 +99,9 @@ interface_ref tap_open() {
             return;
         }
 
-        read_avail ++;
+        /* Record that we have packets waiting */
+        read_avail += 1;
+        /* TODO: wake up readers */
     });
 
     /* Did we manage to set an event callback? */
@@ -112,6 +114,11 @@ interface_ref tap_open() {
 }
 
 int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
+    if (read_avail == 0) {
+        /* No packets waiting */
+        return 0;
+    }
+
     // assert(len >= vmnet_max_packet_size);
 
     struct iovec iov;
@@ -132,14 +139,15 @@ int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
     }
 
     if (pktcnt <= 0) {
+        /* Record that there are no packets waiting */
+        read_avail = 0;
         return 0;
     }
 
     /* Ensure we read exactly one packet */
     assert(pktcnt == 1);
 
-    printf("RX\n");
-    return pktcnt;
+    return v.vm_pkt_size;
 }
 
 int main(int argc, char **argv) {
@@ -152,6 +160,7 @@ int main(int argc, char **argv) {
 
     char buf[1600];
     for(;;) {
-        tap_read(vmnet_iface_ref, buf, sizeof(buf));
+        int size = tap_read(vmnet_iface_ref, buf, sizeof(buf));
+        printf("RX size=%lu\n", size);
     }
 }
