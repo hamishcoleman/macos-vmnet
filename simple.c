@@ -122,6 +122,7 @@ interface_ref tap_open() {
         vmnet_interface_id_key,
         set_uuid
     );
+#endif /* INSANE */
 
     char * ipaddr = "10.20.30.40"; // The interface will have this ip4 address
     xpc_dictionary_set_string(interface_desc,
@@ -167,7 +168,6 @@ interface_ref tap_open() {
         vmnet_allocate_mac_address_key,
         false
     );
-#endif /* INSANE */
 
     dispatch_queue_t vmnet_dispatch_queue = dispatch_queue_create(
         "org.qemu.vmnet.iface_queue",
