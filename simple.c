@@ -114,6 +114,18 @@ interface_ref tap_open() {
         mode
     );
 
+    uuid_t set_uuid;
+    uuid_parse("000000-0000-0000-0000-000000000001", set_uuid);
+    xpc_dictionary_set_uuid(interface_desc,
+        vmnet_interface_id_key,
+        set_uuid
+    );
+
+    xpc_dictionary_set_bool(interface_desc,
+        vmnet_allocate_mac_address_key,
+        false
+    );
+
     dispatch_queue_t vmnet_dispatch_queue = dispatch_queue_create(
         "org.qemu.vmnet.iface_queue",
         DISPATCH_QUEUE_SERIAL
@@ -151,17 +163,23 @@ interface_ref tap_open() {
             interface_param,
             vmnet_max_packet_size_key
         );
-        vmnet_mac_address = strdup(xpc_dictionary_get_string(
+        vmnet_mac_address = xpc_dictionary_get_string(
             interface_param,
             vmnet_mac_address_key
-        ));
+        );
+        if (vmnet_mac_address) {
+            vmnet_mac_address=strdup(vmnet_mac_address);
+        } else {
+            vmnet_mac_address="NULL";
+        }
 
         const uint8_t *iface_uuid = xpc_dictionary_get_uuid(
             interface_param,
             vmnet_interface_id_key
         );
-        uuid_unparse_upper(iface_uuid, *vmnet_iface_uuid_ptr);
-
+        if (iface_uuid) {
+            uuid_unparse_upper(iface_uuid, *vmnet_iface_uuid_ptr);
+        }
 
         dispatch_semaphore_signal(vmnet_iface_sem);
     });
