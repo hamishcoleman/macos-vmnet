@@ -161,6 +161,8 @@ interface_ref tap_open() {
 
 #endif
 
+    // Appears to simply generate a mac address unlikely to be used elsewhere.
+    // No edge mac filtering was seen with this simple test tool.
     xpc_dictionary_set_bool(interface_desc,
         vmnet_allocate_mac_address_key,
         false
