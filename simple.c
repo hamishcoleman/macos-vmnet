@@ -127,13 +127,13 @@ int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
     iov.iov_base = buf;
     iov.iov_len = len;
 
-    int pktcnt = 1;
     struct vmpktdesc v;
     v.vm_pkt_size = len;
     v.vm_pkt_iov = &iov;
     v.vm_pkt_iovcnt = 1;
     v.vm_flags = 0;
 
+    int pktcnt = 1;
     vmnet_return_t result = vmnet_read(vmnet_iface_ref, &v, &pktcnt);
     if (result != VMNET_SUCCESS) {
         printf("Failed to read packet from host: %i\n", result);
@@ -148,6 +148,26 @@ int tap_read(interface_ref vmnet_iface_ref, char *buf, int len) {
 
     /* Ensure we read exactly one packet */
     assert(pktcnt == 1);
+
+    return v.vm_pkt_size;
+}
+
+int tap_write(interface_ref vmnet_iface_ref, char *buf, int len) {
+    struct iovec iov;
+    iov.iov_base = buf;
+    iov.iov_len = len;
+    struct vmpktdesc v;
+    v.vm_pkt_size = len;
+    v.vm_pkt_iov = &iov;
+    v.vm_pkt_iovcnt = 1;
+    v.vm_flags = 0;
+
+    int pktcnt = 1;
+    vmnet_return_t result = vmnet_write(vmnet_iface_ref, &v, &pktcnt);
+    if (result != VMNET_SUCCESS || pktcnt != 1) {
+        printf("Failed to read packet from host: %i\n", result);
+        return -1;
+    }
 
     return v.vm_pkt_size;
 }
@@ -206,6 +226,18 @@ int main(int argc, char **argv) {
         if (size) {
             fhexdump(0, buf, size, stdout);
             printf("\n");
+
+            char dummy[] =
+                "\xff\xff\xff\xff\xff\xff"  // eth dest
+                "\x02\x10\x20\x30\x40\x50"  // eth src
+                "\x55\xaa"                  // eth proto
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "abcdefghijklmnopqrstuvwxyz";
+            size = sizeof(dummy);
+            size = tap_write(vmnet_iface_ref, dummy, size);
+            if (size != sizeof(dummy)) {
+                printf("write error: size=%i\n", size);
+            }
         }
     }
 }
