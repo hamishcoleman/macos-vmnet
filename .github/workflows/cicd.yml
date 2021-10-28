@@ -1,6 +1,7 @@
 ---
 name: CI CD
 
+# yamllint disable-line rule:truthy
 on:
   push:
   pull_request:
