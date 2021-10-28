@@ -120,6 +120,30 @@ interface_ref tap_open() {
         vmnet_interface_id_key,
         set_uuid
     );
+#if 0
+    // Available from 11.0
+    xpc_dictionary_set_uuid(interface_desc,
+        vmnet_network_identifier_key,
+        set_uuid
+    );
+    xpc_dictionary_set_string(interface_desc,
+        vmnet_host_ip_address_key,
+        "10.20.30.40"
+    );
+    xpc_dictionary_set_string(interface_desc,
+        vmnet_host_subnet_mask_key,
+        "255.255.255.0"
+    );
+
+    // for completeness sake
+    // vmnet_host_ipv6_address_key
+
+    xpc_dictionary_set_bool(interface_desc,
+        vmnet_enable_isolation_key,
+        true
+    );
+
+#endif
 
     xpc_dictionary_set_bool(interface_desc,
         vmnet_allocate_mac_address_key,
