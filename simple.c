@@ -71,14 +71,13 @@ int tap_write(interface_ref vmnet_iface_ref, char *buf, int len) {
     return v.vm_pkt_size;
 }
 
-void handle_rx_packet(interface_ref vmnet_iface_ref, char *buf, int len) {
-    if (len==0) {
-        return;
-    }
-
-    fhexdump(0, buf, len, stdout);
-    printf("\n");
-
+void send_dummy(interface_ref vmnet_iface_ref) {
+    /*
+     * Generate a dummy packet and transmit it
+     *
+     * Use purely for testing that sending packets works
+     *
+     */
     char dummy[] =
         "\xff\xff\xff\xff\xff\xff"  // eth dest
         "\x02\x10\x20\x30\x40\x50"  // eth src
@@ -90,6 +89,19 @@ void handle_rx_packet(interface_ref vmnet_iface_ref, char *buf, int len) {
     if (size != sizeof(dummy)) {
         printf("write error: size=%i\n", size);
     }
+}
+
+void handle_rx_packet(interface_ref vmnet_iface_ref, char *buf, int len) {
+    if (len==0) {
+        return;
+    }
+
+    /* For debugging, dump the packet we got */
+    fhexdump(0, buf, len, stdout);
+    printf("\n");
+
+    /* For generating some reply traffic, send a dummy packet */
+    send_dummy(vmnet_iface_ref);
 }
 
 interface_ref tap_open() {
