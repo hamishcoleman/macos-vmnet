@@ -205,6 +205,19 @@ interface_ref tap_open() {
             uuid_unparse_upper(iface_uuid, *vmnet_iface_uuid_ptr);
         }
 
+        printf("got interface_param with:\n");
+        xpc_dictionary_apply(interface_param,
+            ^bool (const char * _Nonnull key, xpc_object_t _Nonnull value) {
+            char *desc = xpc_copy_description(value);
+            printf("  %s %s\n",
+                key,
+                desc
+            );
+            free(desc);
+            return true;
+        });
+        printf("\n\n");
+
         dispatch_semaphore_signal(vmnet_iface_sem);
     });
 
@@ -225,6 +238,7 @@ interface_ref tap_open() {
     printf("Max packet size:  %llu\n", vmnet_max_packet_size);
     printf("MAC:              %s\n", vmnet_mac_address);
     printf("UUID:             %s\n", vmnet_iface_uuid);
+    printf("\n\n");
 
     vmnet_return_t event_cb_stat = vmnet_interface_set_event_callback(
         vmnet_iface_ref,
