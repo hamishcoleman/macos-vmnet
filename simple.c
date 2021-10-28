@@ -114,7 +114,7 @@ interface_ref tap_open() {
         mode
     );
 
-#define INSANE 1
+#define INSANE 0
 #if INSANE
     uuid_t set_uuid;
     uuid_parse("000000-0000-0000-0000-000000000001", set_uuid);
