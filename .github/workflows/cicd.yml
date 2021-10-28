@@ -1,0 +1,25 @@
+---
+name: CI CD
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cicd:
+    name: CI CD
+    runs-on: macos-latest
+  steps:
+    - uses: actions/checkout@v2
+
+    - name: build it
+      run: make
+
+    - name: does it run
+      run: sudo ./simple 10.20.20.20 5
+
+    - name: save it
+      uses: actions/upload-artifact@v2
+      with:
+        name: binaries
+        path: simple
