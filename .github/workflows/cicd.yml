@@ -20,7 +20,7 @@ jobs:
         run: |
           sudo ./simple 10.20.20.20 5 >output.txt &
           ifconfig >ifconfig.txt
-          tcpdump -e -c 10 -i bridge100 >tcpdump.txt
+          sudo tcpdump -e -c 10 -i bridge100 >tcpdump.txt
 
       - name: save binary
         uses: actions/upload-artifact@v2
