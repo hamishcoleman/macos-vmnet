@@ -6,9 +6,11 @@
 #include <unistd.h>
 #include <sys/uio.h>
 #include <vmnet/vmnet.h>
+#include <SystemConfiguration/SCNetworkConfiguration.h>
 
 #include <stdio.h>
 #include <time.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 void fhexdump(unsigned int display_addr, void *in, int size, FILE *stream) {
   uint8_t *p = in;
@@ -287,10 +289,10 @@ interface_ref tap_open(const char *ip4addr) {
 /*
  * Experiments in querying the network details
  */
-void interface_list() {
+void interface_list1() {
     xpc_object_t list = vmnet_copy_shared_interface_list();
 
-    printf("shared interface list:\n");
+    printf("interface list from vmnet_copy_shared_interface_list():\n");
     xpc_array_apply(list, ^bool(size_t index, xpc_object_t value) {
         char *desc = xpc_copy_description(value);
         printf("  %lu %s\n",
@@ -300,7 +302,22 @@ void interface_list() {
         free(desc);
         return true;
     });
+    printf("\n");
     free(list);
+}
+
+void interface_list2() {
+    CFArrayRef list2 = SCNetworkInterfaceCopyAll();
+
+    printf("interface list from SCNetworkInterfaceCopyAll():\n");
+    CFShow(list2);
+    printf("\n");
+    CFRelease(list2);
+}
+
+void interface_list() {
+    interface_list1();
+    interface_list2();
 }
 
 int main(int argc, char **argv) {
