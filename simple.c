@@ -313,6 +313,13 @@ void interface_list2() {
     CFShow(list2);
     printf("\n");
     CFRelease(list2);
+
+    list2 = SCVLANInterfaceCopyAvailablePhysicalInterfaces();
+
+    printf("interface list from SCVLANInterfaceCopyAvailablePhysicalInterfaces():\n");
+    CFShow(list2);
+    printf("\n");
+    CFRelease(list2);
 }
 
 void interface_list() {
