@@ -331,7 +331,7 @@ int main(int argc, char **argv) {
         return(0);
     }
 
-    int timeout = 0;
+    int timeout = 1000000;
     if (argc>2) {
         timeout = atoi(argv[2]);
     }
