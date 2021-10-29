@@ -284,10 +284,34 @@ interface_ref tap_open(const char *ip4addr) {
     return vmnet_iface_ref;
 }
 
+/*
+ * Experiments in querying the network details
+ */
+void interface_list() {
+    xpc_object_t list = vmnet_copy_shared_interface_list();
+
+    printf("shared interface list:\n");
+    xpc_array_apply(list, ^bool(size_t index, xpc_object_t value) {
+        char *desc = xpc_copy_description(value);
+        printf("  %lu %s\n",
+            index,
+            desc
+        );
+        free(desc);
+        return true;
+    });
+    free(list);
+}
+
 int main(int argc, char **argv) {
     char *ip4addr = "10.20.30.40";
     if (argc>1) {
         ip4addr = argv[1];
+    }
+
+    if (0==strcmp(ip4addr,"list")) {
+        interface_list();
+        return(0);
     }
 
     int timeout = 0;
