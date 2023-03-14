@@ -11,7 +11,7 @@ jobs:
     name: CI CD
     runs-on: macos-11
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: build it
         run: make
@@ -33,13 +33,13 @@ jobs:
           cat tcpdump.txt
 
       - name: save binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: binaries
           path: simple
 
       - name: save output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: output
           path: ./*.txt
